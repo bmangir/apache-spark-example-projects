@@ -49,7 +49,7 @@ current_snapshot_df = read(spark_session, "data/initial_data.json", snapshot_sch
 # Take Change Data Capture
 cdc_data_df = read(spark_session, "data/cdc_data.json")
 
-latest_cdc_data = find_last_changes(cdc_data_df)
+latest_cdc_data = find_last_changes(cdc_data_df).select("id", "name", "category", "brand", "color", "price", "timestamp")
 
 latest_snapshot_df = find_latest_snapshot_data(current_snapshot_df, latest_cdc_data)
 latest_snapshot_df.show()
