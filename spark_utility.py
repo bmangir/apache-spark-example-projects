@@ -1,7 +1,7 @@
-from pyspark.sql import SparkSession
+from pyspark.sql import SparkSession, DataFrame
 
 
-def create_spark_session(app_name):
+def create_spark_session(app_name) -> SparkSession:
     """
     :param app_name: name of app
     :return: spark session
@@ -14,12 +14,23 @@ def create_spark_session(app_name):
     return spark
 
 
-def read(spark, path, schema=None):
+def read_json(spark, path, schema=None) -> DataFrame:
     """
-    Read data json files
+    Read json data files
     :param spark: spark session
     :param schema: schema of dataframe
     :param path: path of json file
     :return:
     """
     return spark.read.json(path, schema=schema)
+
+
+def read_csv(spark, path, schema=None) -> DataFrame:
+    """
+    Read csv data files
+    :param spark: spark session
+    :param schema: schema of dataframe
+    :param path: path of csv file
+    :return:
+    """
+    return spark.read.option("header", True).csv(path, schema=schema)

@@ -1,7 +1,7 @@
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
-from spark_utility import read, create_spark_session
+from spark_utility import read_json, create_spark_session
 
 
 def find_last_changes(cdc):
@@ -44,10 +44,10 @@ snapshot_scheme = StructType([
 ])
 
 # Take initial data as snapshot data
-current_snapshot_df = read(spark_session, "data/initial_data.json", snapshot_scheme)
+current_snapshot_df = read_json(spark_session, "data/initial_data.json", snapshot_scheme)
 
 # Take Change Data Capture
-cdc_data_df = read(spark_session, "data/cdc_data.json")
+cdc_data_df = read_json(spark_session, "data/cdc_data.json")
 
 latest_cdc_data = find_last_changes(cdc_data_df).select("id", "name", "category", "brand", "color", "price", "timestamp")
 
