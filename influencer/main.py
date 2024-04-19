@@ -49,28 +49,35 @@ def rank_by_category(df) -> DataFrame:
     return df
 
 
-def show_top_n_all_channels(df, n, categories):
+def get_top_n_all_channels(df, n) -> DataFrame:
     """
     # Find the top n YouTube channels for each category
     :param df: dataframe
     :param n: number that find the tops
-    :param categories: category list
     :return:
     """
+
     for c in categories:
-        if type(c["category"]) is str:
-            df.where(col("category") == c["category"]).show(n)
+        if isinstance(c["category"], str):
+            df_filtered = df.where(col("category") == c["category"]).limit(n)
         else:
-            df.where(col("category").isNull()).show(n)
+            df_filtered = df.where(col("category").isNull()).limit(n)
+
+        # If it's the first iteration, create the union_df
+        if 'union_df' not in locals():
+            union_df = df_filtered
+        else:
+            union_df = union_df.union(df_filtered)
+
+    return union_df
 
 
-def get_top_n_channels(df, category, n) -> DataFrame:
-    if col(category).isNull:
-        df = df.where(col(category).isNull()).take(n)
-    else:
-        df = df.where(col("category") == category).take(n)
+def get_top_n_channels_by_category(df, category, n) -> DataFrame:
+    if category is None:
+        return df.where(col("category").isNull()).limit(n)
 
-    return df
+    return df.where(col("category") == category).limit(n)
+
 
 # Create spark session
 youtube_session = create_spark_session("Youtube Analysis")
@@ -80,11 +87,16 @@ input_path = "data/most_subscribed_youtube_channels.csv"
 ranked_youtubers = read_data(input_path)
 ranked_youtubers = find_coefficient_factor(ranked_youtubers)
 
-
 # Order by coefficient values for each category
 ranked_by_category = rank_by_category(ranked_youtubers)
 
 # Find the distinct categories
 categories = ranked_youtubers.select("category").distinct().collect()
 
-show_top_n_all_channels(ranked_by_category, 5, categories)
+# Find the top 5 channels for each category
+top_channels_for_each_category = get_top_n_all_channels(ranked_by_category, 5)
+top_channels_for_each_category.show()
+
+# Find the top 10 channels in Music category
+top_music_channels = get_top_n_channels_by_category(ranked_by_category, "Music", 10)
+top_music_channels.show()
