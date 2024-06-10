@@ -1,11 +1,10 @@
-import pyspark
 from pyspark.sql.functions import *
 from pyspark.sql.types import *
 from pyspark.sql.window import Window
 from spark_utility import read_csv, create_spark_session
 
 
-def read_data(path) -> DataFrame:
+def read_youtuber_details(path) -> DataFrame:
     """
     Read the data and convert some columns string to integer.
     :param path: path of the input data
@@ -30,13 +29,15 @@ def find_coefficient_factor(df) -> DataFrame:
     """
 
     df = df \
+        .withColumn("video_views", coalesce(col("video_views"), lit(0))) \
+        .withColumn("video_count", coalesce(col("video_count"), lit(0))) \
         .withColumn("coefficient", round(col("video_count") / col("video_views") * pow(10, 9), 4)) \
         .where(col("coefficient").isNotNull())
 
     return df
 
 
-def rank_by_category(df) -> DataFrame:
+def rank_by_category_n_subscribers(df) -> DataFrame:
     """
 
     :param df:
@@ -44,32 +45,21 @@ def rank_by_category(df) -> DataFrame:
     """
 
     category_window = Window.partitionBy("category").orderBy(col("coefficient").asc())
-    df = ranked_youtubers.withColumn('rnk', rank().over(category_window))
+    df = df.withColumn('rnk', rank().over(category_window))
 
     return df
 
 
 def get_top_n_all_channels(df, n) -> DataFrame:
     """
-    # Find the top n YouTube channels for each category
+    Find the top N YouTube channels for each category.
+    (If category is null, also rank them and display)
     :param df: dataframe
-    :param n: number that find the tops
-    :return:
+    :param n: number of top channels to retrieve for each category
+    :return: dataframe with top N channels for each category
     """
 
-    for c in categories:
-        if isinstance(c["category"], str):
-            df_filtered = df.where(col("category") == c["category"]).limit(n)
-        else:
-            df_filtered = df.where(col("category").isNull()).limit(n)
-
-        # If it's the first iteration, create the union_df
-        if 'union_df' not in locals():
-            union_df = df_filtered
-        else:
-            union_df = union_df.union(df_filtered)
-
-    return union_df
+    return df.where(col("rnk") <= n)
 
 
 def get_top_n_channels_by_category(df, category, n) -> DataFrame:
@@ -84,11 +74,11 @@ youtube_session = create_spark_session("Youtube Analysis")
 
 # Read the input data
 input_path = "data/most_subscribed_youtube_channels.csv"
-ranked_youtubers = read_data(input_path)
+ranked_youtubers = read_youtuber_details(input_path)
 ranked_youtubers = find_coefficient_factor(ranked_youtubers)
 
 # Order by coefficient values for each category
-ranked_by_category = rank_by_category(ranked_youtubers)
+ranked_by_category = rank_by_category_n_subscribers(ranked_youtubers)
 
 # Find the distinct categories
 categories = ranked_youtubers.select("category").distinct().collect()
